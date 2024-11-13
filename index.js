@@ -270,13 +270,14 @@ fastify.post('/make-call', async (request, reply) => {
     }
 });
 
-fastify.listen({ port: PORT }, (err) => {
+fastify.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
     if (err) {
-        console.error(err);
+        console.error("Error starting server:", err);
         process.exit(1);
     }
-    console.log(`Server is listening on port ${PORT}`);
+    console.log(`Server is listening on ${address}`);
 });
+
 
 // Function to make ChatGPT API completion call with structured outputs
 async function makeChatGPTCompletion(transcript) {
