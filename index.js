@@ -60,19 +60,22 @@ fastify.get("/", async (request, reply) => {
 });
 
 // Route for Twilio to handle incoming and outgoing calls
+// Route for Twilio to handle incoming and outgoing calls
 fastify.all("/incoming-call", async (request, reply) => {
     console.log("Incoming call");
 
-    const twimlResponse = <?xml version="1.0" encoding="UTF-8"?>
-                          <Response>
-                              <Say> Welcome to the Smart Care system for residential communities. How can we assist you today? </Say>
-                              <Connect>
-                                  <Stream url="wss://${request.headers.host}/media-stream" />
-                              </Connect>
-                          </Response>;
+    const twimlResponse = `
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Say> Welcome to the Smart Care system for residential communities. How can we assist you today? </Say>
+            <Connect>
+                <Stream url="wss://${request.headers.host}/media-stream" />
+            </Connect>
+        </Response>`;
 
     reply.type("text/xml").send(twimlResponse);
 });
+
 
 // WebSocket route for media-stream
 fastify.register(async (fastify) => {
