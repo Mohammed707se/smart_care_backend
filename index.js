@@ -43,7 +43,7 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
 // Constants
-const AUDIO_FILE_URL = "https://yourdomain.com/path/to/your-audio-file.mp3"; // Replace with your audio file URL
+const AUDIO_FILE_PATH = "./voice.mp3"; 
 const PORT = process.env.PORT || 8000;
 const WEBHOOK_URL = "<u1ymuynewav7ute5fao8my84s3a7lgh0@hook.eu2.make.com>";
 
@@ -82,11 +82,14 @@ fastify.get("/", async (request, reply) => {
 
 // Route for Twilio to handle incoming calls
 fastify.post("/incoming-call", async (request, reply) => {
+    // Read the audio file from the local system
+    const audioData = fs.readFileSync(AUDIO_FILE_PATH);
+
     const twiml = `
         <?xml version="1.0" encoding="UTF-8"?>
         <Response>
             <Gather action="/handle-gather" method="POST" timeout="5" numDigits="1" numRetries="3">
-                <Play>${AUDIO_FILE_URL}</Play>
+                <Play>${audioData}</Play>
                 <Say>Please press 1 for Arabic or 2 for English.</Say>
             </Gather>
             <Say>We did not receive any input. Goodbye!</Say>
