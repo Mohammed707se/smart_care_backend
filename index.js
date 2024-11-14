@@ -34,7 +34,7 @@ fastify.register(fastifyWs);
 // Constants
 const SYSTEM_MESSAGE =
     "Role: You are an AI assistant for the Smart Care system in residential communities. Your job is to assist residents in reporting maintenance issues, accessing emergency services, and providing proactive solutions. Engage politely and professionally, guiding users to provide details naturally, such as problem descriptions and preferences for service timing.";
-const VOICE = "Shimmer";
+const VOICE = "echo";
 const PORT = process.env.PORT || 8000;
 const WEBHOOK_URL = "<u1ymuynewav7ute5fao8my84s3a7lgh0@hook.eu2.make.com>";
 
@@ -270,14 +270,13 @@ fastify.post('/make-call', async (request, reply) => {
     }
 });
 
-fastify.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
+fastify.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
     if (err) {
-        console.error(err);
+        console.error("Error starting server:", err);
         process.exit(1);
     }
-    console.log(`Server is listening on port ${PORT}`);
+    console.log(`Server is listening on ${address}`);
 });
-
 
 // Function to make ChatGPT API completion call with structured outputs
 async function makeChatGPTCompletion(transcript) {
