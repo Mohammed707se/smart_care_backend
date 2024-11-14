@@ -32,7 +32,7 @@ if (!OPENAI_API_KEY) {
 
 if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
   console.error(
-    "Missing Twilio credentials. Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in the .env file.",
+    "Missing Twilio credentials. Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in the .env file."
   );
   process.exit(1);
 }
@@ -57,12 +57,12 @@ fastify.get("/", async (request, reply) => {
 fastify.all("/incoming-call", async (req, res) => {
   console.log("📲 Incoming call");
   res.type("text/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
-                          <Response>
-                              <Say> Smart Care system. How can we assist you today? </Say>
-                              <Connect>
-                                  <Stream url="wss://${req.headers.host}/media-stream" />
-                              </Connect>
-                          </Response>`);
+<Response>
+    <Say> Smart Care system. How can we assist you today? </Say>
+    <Connect>
+        <Stream url="wss://${req.headers.host}/media-stream" />
+    </Connect>
+</Response>`);
 });
 
 // WebSocket route for media-stream
@@ -101,7 +101,7 @@ fastify.register(async (fastify) => {
           "conversation.item.input_audio_transcription.completed"
         ) {
           const userMessage = response.transcript.trim();
-          session.transcript += User: ${userMessage}\n;
+          session.transcript += `User: ${userMessage}\n`;
           console.log(`User (${sessionId}): ${userMessage}`);
         }
 
@@ -109,11 +109,10 @@ fastify.register(async (fastify) => {
         if (response.type === "response.done") {
           const agentMessage =
             response.response.output[0]?.content?.find(
-              (content) => content.transcript,
+              (content) => content.transcript
             )?.transcript || "Agent message not found";
-          session.transcript += Agent: ${agentMessage}\n;
+          session.transcript += `Agent: ${agentMessage}\n`;
           console.log(`Agent (${sessionId}): ${agentMessage}`);
-
         }
 
         if (response.type === "session.updated") {
@@ -135,7 +134,7 @@ fastify.register(async (fastify) => {
           "❗️ Error processing OpenAI message:",
           error,
           "Raw message:",
-          data,
+          data
         );
       }
     });
@@ -184,7 +183,7 @@ fastify.register(async (fastify) => {
       await processTranscriptAndSend(
         session.transcript,
         WEBHOOK_URL,
-        sessionId,
+        sessionId
       );
 
       // Clean up the session
@@ -214,7 +213,7 @@ fastify.post("/make-call", async (request, reply) => {
 
   try {
     const call = await twilioClient.calls.create({
-      url: ${WEBHOOK_URL}/incoming-call, // Twilio will request this URL when the call is answered
+      url: `${WEBHOOK_URL}/incoming-call`, // Twilio will request this URL when the call is answered
       to: to,
       from: TWILIO_PHONE_NUMBER,
       // Optionally, you can add other parameters here
@@ -222,7 +221,7 @@ fastify.post("/make-call", async (request, reply) => {
 
     console.log(`Initiated call to ${to}. Call SID: ${call.sid}`);
     return reply.send({
-      message: Call initiated to ${to},
+      message: `Call initiated to ${to}`,
       callSid: call.sid,
     });
   } catch (error) {
@@ -232,9 +231,9 @@ fastify.post("/make-call", async (request, reply) => {
 });
 
 fastify.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
-    if (err) {
-        console.error("Error starting server:", err);
-        process.exit(1);
-    }
-    console.log(`Server is listening on ${address}`);
+  if (err) {
+    console.error("Error starting server:", err);
+    process.exit(1);
+  }
+  console.log(`Server is listening on ${address}`);
 });
