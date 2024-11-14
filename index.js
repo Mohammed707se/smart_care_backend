@@ -43,7 +43,7 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
 // Constants
-const AUDIO_FILE_URL = "https://drive.google.com/file/d/1wMIHN0wZNTp8UB0UoiIw9UgFp0ABvtoI/view?usp=sharing";
+const AUDIO_FILE_URL = "https://smartcare.lisn-car.com/voice.mp3";
 const PORT = process.env.PORT || 8000;
 const WEBHOOK_URL = "<u1ymuynewav7ute5fao8my84s3a7lgh0@hook.eu2.make.com>";
 
