@@ -32,9 +32,14 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
 // Constants
-const SYSTEM_MESSAGE =
-    "Role: You are an AI assistant for the Smart Care system in residential communities. Your job is to assist residents in reporting maintenance issues, accessing emergency services, and providing proactive solutions. Engage politely and professionally, guiding users to provide details naturally, such as problem descriptions and preferences for service timing.";
-const VOICE = "echo";
+const SYSTEM_MESSAGES = {
+    english: "You are an AI assistant for the Smart Care system in residential communities. This is a demo simulation. Your job is to assist residents in reporting maintenance issues, accessing emergency services, and providing proactive solutions. Be concise, avoid mistakes, and strictly follow the instructions without deviating from the defined scope. Limit interactions to a maximum of two questions.",
+    arabic: "أنت مساعد ذكاء اصطناعي لنظام الرعاية الذكية في المجتمعات السكنية. هذا محاكاة ديمو. مهمتك هي مساعدة السكان في الإبلاغ عن مشاكل الصيانة، الوصول إلى الخدمات الطارئة، وتقديم حلول استباقية. كن موجزًا، تجنب الأخطاء، واتبع التعليمات بدقة دون الخروج عن النطاق المحدد. حدد التفاعلات بحد أقصى سؤالين."
+};
+const VOICES = {
+    english: "alice",
+    arabic: "maged"
+};
 const PORT = process.env.PORT || 8000;
 const WEBHOOK_URL = "<u1ymuynewav7ute5fao8my84s3a7lgh0@hook.eu2.make.com>";
 
@@ -59,19 +64,79 @@ fastify.get("/", async (request, reply) => {
     reply.send({ message: "Smart Care Media Stream Server is running!" });
 });
 
-// Route for Twilio to handle incoming and outgoing calls
-fastify.all("/incoming-call", async (request, reply) => {
+// Route for Twilio to handle incoming calls and language selection
+fastify.post("/incoming-call", async (request, reply) => {
     console.log("Incoming call");
 
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
-                              <Say> Welcome to the Smart Care system for residential communities. How can we assist you today? </Say>
-                              <Connect>
-                                  <Stream url="wss://${request.headers.host}/media-stream" />
-                              </Connect>
+                              <Gather action="/gather-selection" numDigits="1" timeout="5">
+                                  <Say language="ar-AR">للتحدث باللغة العربية، اضغط 1. للتحدث باللغة الإنجليزية، اضغط 2.</Say>
+                                  <Say language="en-US">For English, press 2. للمزيد من الخيارات، اضغط 1.</Say>
+                              </Gather>
+                              <Say language="en-US">No input received. Please try again.</Say>
+                              <Redirect>/incoming-call</Redirect>
                           </Response>`;
 
     reply.type("text/xml").send(twimlResponse);
+});
+
+// Route to handle the language selection
+fastify.post("/gather-selection", async (request, reply) => {
+    const digit = request.body.Digits;
+    console.log(`User selected digit: ${digit}`);
+
+    let language = 'english'; // Default language
+    let systemMessage = SYSTEM_MESSAGES.english;
+    let voice = VOICES.english;
+
+    if (digit === '1') {
+        language = 'arabic';
+        systemMessage = SYSTEM_MESSAGES.arabic;
+        voice = VOICES.arabic;
+    } else if (digit === '2') {
+        language = 'english';
+        systemMessage = SYSTEM_MESSAGES.english;
+        voice = VOICES.english;
+    } else {
+        // If invalid input, prompt again
+        const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+                              <Response>
+                                  <Gather action="/gather-selection" numDigits="1" timeout="5">
+                                      <Say language="ar-AR">للتحدث باللغة العربية، اضغط 1. للتحدث باللغة الإنجليزية، اضغط 2.</Say>
+                                      <Say language="en-US">For English, press 2. للمزيد من الخيارات، اضغط 1.</Say>
+                                  </Gather>
+                                  <Say language="en-US">No input received. Please try again.</Say>
+                                  <Redirect>/incoming-call</Redirect>
+                              </Response>`;
+        reply.type("text/xml").send(twimlResponse);
+        return;
+    }
+
+    // Create TwiML response to connect to media stream
+    const twimlConnect = `<?xml version="1.0" encoding="UTF-8"?>
+                        <Response>
+                            <Say language="${language === 'arabic' ? 'ar-AR' : 'en-US'}">
+                                ${language === 'arabic' ? "مرحبا بك في نظام الرعاية الذكية. كيف يمكننا مساعدتك اليوم؟" : "Welcome to the Smart Care system for residential communities. How can we assist you today?"}
+                            </Say>
+                            <Connect>
+                                <Stream url="wss://${request.headers.Host}/media-stream" />
+                            </Connect>
+                        </Response>`;
+
+    reply.type("text/xml").send(twimlConnect);
+
+    // Store language preference in session
+    const callSid = request.body.CallSid;
+    let session = sessions.get(callSid) || {
+        transcript: "",
+        streamSid: null,
+        language: language
+    };
+    session.language = language;
+    session.systemMessage = systemMessage;
+    session.voice = voice;
+    sessions.set(callSid, session);
 });
 
 // WebSocket route for media-stream
@@ -79,11 +144,13 @@ fastify.register(async (fastify) => {
     fastify.get("/media-stream", { websocket: true }, (connection, req) => {
         console.log("Client connected");
 
-        const sessionId =
-            req.headers["x-twilio-call-sid"] || `session_${Date.now()}`;
+        const sessionId = req.query.CallSid || `session_${Date.now()}`;
         let session = sessions.get(sessionId) || {
             transcript: "",
             streamSid: null,
+            language: 'english',
+            systemMessage: SYSTEM_MESSAGES.english,
+            voice: VOICES.english
         };
         sessions.set(sessionId, session);
 
@@ -104,8 +171,8 @@ fastify.register(async (fastify) => {
                     turn_detection: { type: "server_vad" },
                     input_audio_format: "g711_ulaw",
                     output_audio_format: "g711_ulaw",
-                    voice: VOICE,
-                    instructions: SYSTEM_MESSAGE,
+                    voice: session.voice,
+                    instructions: session.systemMessage,
                     modalities: ["text", "audio"],
                     temperature: 0.8,
                     input_audio_transcription: {
@@ -230,7 +297,7 @@ fastify.register(async (fastify) => {
             console.log("Full Transcript:");
             console.log(session.transcript);
 
-            await processTranscriptAndSend(session.transcript, sessionId);
+            await processTranscriptAndSend(session.transcript, sessionId, session.language);
 
             // Clean up the session
             sessions.delete(sessionId);
@@ -280,9 +347,13 @@ fastify.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
 
 
 // Function to make ChatGPT API completion call with structured outputs
-async function makeChatGPTCompletion(transcript) {
+async function makeChatGPTCompletion(transcript, language) {
     console.log("Starting ChatGPT API call...");
     try {
+        const systemMessage = language === 'arabic' ?
+            "أنت مساعد ذكاء اصطناعي لنظام الرعاية الذكية في المجتمعات السكنية. هذا محاكاة ديمو. مهمتك هي استخراج تفاصيل الساكن: الاسم، وصف المشكلة، ووقت الخدمة المفضل من النص. كن دقيقًا واتبع التعليمات بدقة دون أخطاء أو تجاوزات." :
+            "You are an AI assistant for the Smart Care system in residential communities. This is a demo simulation. Your job is to extract resident details: name, problem description, and preferred service time from the transcript. Be precise and strictly follow the instructions without making mistakes or deviating from the defined scope.";
+
         const response = await fetch(
             "https://api.openai.com/v1/chat/completions",
             {
@@ -296,8 +367,7 @@ async function makeChatGPTCompletion(transcript) {
                     messages: [
                         {
                             role: "system",
-                            content:
-                                "Extract resident details: name, problem description, and preferred service time from the transcript.",
+                            content: systemMessage,
                         },
                         { role: "user", content: transcript },
                     ],
@@ -364,11 +434,11 @@ async function sendToWebhook(payload) {
 }
 
 // Main function to extract and send resident details
-async function processTranscriptAndSend(transcript, sessionId = null) {
+async function processTranscriptAndSend(transcript, sessionId = null, language = 'english') {
     console.log(`Starting transcript processing for session ${sessionId}...`);
     try {
         // Make the ChatGPT completion call
-        const result = await makeChatGPTCompletion(transcript);
+        const result = await makeChatGPTCompletion(transcript, language);
 
         console.log(
             "Raw result from ChatGPT:",
@@ -397,6 +467,19 @@ async function processTranscriptAndSend(transcript, sessionId = null) {
                         "Extracted and sent resident details:",
                         parsedContent,
                     );
+
+                    // Send confirmation message to user based on language
+                    const confirmationMessage = language === 'arabic' ?
+                        "تم رفع طلبك للجهة المختصة وسيتم التواصل معك في أقرب وقت. هل لديك شيء آخر؟" :
+                        "Your request has been forwarded to the appropriate department and we will contact you as soon as possible. Do you have anything else?";
+
+                    // إرسال رسالة التأكيد للمستخدم باستخدام Twilio
+                    await client.calls.create({
+                        twiml: `<Response><Say language="${language === 'arabic' ? 'ar-AR' : 'en-US'}">${confirmationMessage}</Say></Response>`,
+                        to: sessions.get(sessionId)?.phoneNumber || "", // تأكد من تخزين رقم الهاتف في الجلسة
+                        from: TWILIO_PHONE_NUMBER,
+                    });
+
                 } else {
                     console.error(
                         "Unexpected JSON structure in ChatGPT response",
