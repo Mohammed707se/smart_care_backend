@@ -113,12 +113,9 @@ fastify.post("/gather-selection", async (request, reply) => {
         return;
     }
 
-    // Create TwiML response to connect to media stream
+    // Remove <Say> and rely solely on Stream for audio
     const twimlConnect = `<?xml version="1.0" encoding="UTF-8"?>
                         <Response>
-                            <Say language="${language === 'arabic' ? 'ar-AR' : 'en-US'}">
-                                ${language === 'arabic' ? "مرحبا بك في نظام الرعاية الذكية. كيف يمكننا مساعدتك اليوم؟" : "Welcome to the Smart Care system for residential communities. How can we assist you today?"}
-                            </Say>
                             <Connect>
                                 <Stream url="wss://${request.headers.Host}/media-stream" />
                             </Connect>
@@ -126,16 +123,17 @@ fastify.post("/gather-selection", async (request, reply) => {
 
     reply.type("text/xml").send(twimlConnect);
 
-    // Store language preference in session
+    // Store language preference and phone number in session
     const callSid = request.body.CallSid;
+    const fromNumber = request.body.From; // رقم الهاتف الذي يتصل
     let session = sessions.get(callSid) || {
         transcript: "",
         streamSid: null,
-        language: language
+        language: language,
+        systemMessage: systemMessage,
+        voice: voice,
+        phoneNumber: fromNumber
     };
-    session.language = language;
-    session.systemMessage = systemMessage;
-    session.voice = voice;
     sessions.set(callSid, session);
 });
 
@@ -150,7 +148,8 @@ fastify.register(async (fastify) => {
             streamSid: null,
             language: 'english',
             systemMessage: SYSTEM_MESSAGES.english,
-            voice: VOICES.english
+            voice: VOICES.english,
+            phoneNumber: "" // سيتم تحديثه لاحقًا
         };
         sessions.set(sessionId, session);
 
@@ -195,7 +194,7 @@ fastify.register(async (fastify) => {
         });
 
         // Listen for messages from the OpenAI WebSocket
-        openAiWs.on("message", (data) => {
+        openAiWs.on("message", async (data) => {
             try {
                 const response = JSON.parse(data);
 
@@ -211,9 +210,20 @@ fastify.register(async (fastify) => {
                     const userMessage = response.transcript.trim();
                     session.transcript += `User: ${userMessage}\n`;
                     console.log(`User (${sessionId}): ${userMessage}`);
+
+                    // بعد تلقي رسالة المستخدم، يمكن إرسال النص إلى ChatGPT للحصول على الرد
+                    const chatGptResponse = await makeChatGPTCompletion(userMessage, session.language);
+
+                    // تحويل الرد النصي إلى صوت عبر OpenAI (إذا كانت واجهة API تدعم TTS)
+                    const audioResponse = await generateAudioFromText(chatGptResponse, session.language);
+
+                    // إرسال الصوت المولد إلى Twilio عبر WebSocket
+                    if (audioResponse) {
+                        connection.send(audioResponse); // تأكد من أن audioResponse يتوافق مع تنسيق الصوت المتوقع
+                    }
                 }
 
-                // Agent message handling
+                // Agent message handling إذا كانت OpenAI ترد بالرسائل النصية
                 if (response.type === "response.done") {
                     const agentMessage =
                         response.response.output[0]?.content?.find(
@@ -221,6 +231,14 @@ fastify.register(async (fastify) => {
                         )?.transcript || "Agent message not found";
                     session.transcript += `Agent: ${agentMessage}\n`;
                     console.log(`Agent (${sessionId}): ${agentMessage}`);
+
+                    // تحويل الرد النصي إلى صوت عبر OpenAI
+                    const audioResponse = await generateAudioFromText(agentMessage, session.language);
+
+                    // إرسال الصوت المولد إلى Twilio عبر WebSocket
+                    if (audioResponse) {
+                        connection.send(audioResponse); // تأكد من أن audioResponse يتوافق مع تنسيق الصوت المتوقع
+                    }
                 }
 
                 if (response.type === "session.updated") {
@@ -345,7 +363,6 @@ fastify.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
     console.log(`Server is listening on ${address}`);
 });
 
-
 // Function to make ChatGPT API completion call with structured outputs
 async function makeChatGPTCompletion(transcript, language) {
     console.log("Starting ChatGPT API call...");
@@ -404,6 +421,41 @@ async function makeChatGPTCompletion(transcript, language) {
     } catch (error) {
         console.error("Error making ChatGPT completion call:", error);
         throw error;
+    }
+}
+
+// Function to generate audio from text using OpenAI's API (افترض وجود دعم TTS)
+async function generateAudioFromText(text, language) {
+    console.log("Generating audio from text via OpenAI...");
+    try {
+        const response = await fetch(
+            "https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01",
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${OPENAI_API_KEY}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    prompt: text,
+                    language: language === 'arabic' ? 'ar-AR' : 'en-US',
+                    // إضافة المعلمات المطلوبة لتحويل النص إلى صوت
+                }),
+            },
+        );
+
+        if (!response.ok) {
+            console.error("Failed to generate audio from OpenAI:", response.statusText);
+            return null;
+        }
+
+        const audioBuffer = await response.arrayBuffer();
+        // تحويل البيانات إلى صيغة base64 لإرسالها عبر WebSocket
+        const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+        return audioBase64;
+    } catch (error) {
+        console.error("Error generating audio from text:", error);
+        return null;
     }
 }
 
@@ -473,12 +525,12 @@ async function processTranscriptAndSend(transcript, sessionId = null, language =
                         "تم رفع طلبك للجهة المختصة وسيتم التواصل معك في أقرب وقت. هل لديك شيء آخر؟" :
                         "Your request has been forwarded to the appropriate department and we will contact you as soon as possible. Do you have anything else?";
 
-                    // إرسال رسالة التأكيد للمستخدم باستخدام Twilio
-                    await client.calls.create({
-                        twiml: `<Response><Say language="${language === 'arabic' ? 'ar-AR' : 'en-US'}">${confirmationMessage}</Say></Response>`,
-                        to: sessions.get(sessionId)?.phoneNumber || "", // تأكد من تخزين رقم الهاتف في الجلسة
-                        from: TWILIO_PHONE_NUMBER,
-                    });
+                    // تحويل رسالة التأكيد إلى صوت وإرسالها عبر WebSocket
+                    const audioResponse = await generateAudioFromText(confirmationMessage, language);
+                    if (audioResponse && sessionId) {
+                        const connection = ... // تحتاج إلى طريقة للوصول إلى الاتصال WebSocket بناءً على sessionId
+                        connection.send(audioResponse);
+                    }
 
                 } else {
                     console.error(
