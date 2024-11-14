@@ -34,7 +34,7 @@ fastify.register(fastifyWs);
 // Constants
 const SYSTEM_MESSAGE =
     "Role: You are an AI assistant for the Smart Care system in residential communities. Your job is to assist residents in reporting maintenance issues, accessing emergency services, and providing proactive solutions. Engage politely and professionally, guiding users to provide details naturally, such as problem descriptions and preferences for service timing.";
-const VOICE = "echo";
+const VOICE = "Shimmer";
 const PORT = process.env.PORT || 8000;
 const WEBHOOK_URL = "<u1ymuynewav7ute5fao8my84s3a7lgh0@hook.eu2.make.com>";
 
@@ -63,18 +63,16 @@ fastify.get("/", async (request, reply) => {
 fastify.all("/incoming-call", async (request, reply) => {
     console.log("Incoming call");
 
-    const twimlResponse = `
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Response>
-            <Say> Welcome to the Smart Care system for residential communities. How can we assist you today? </Say>
-            <Connect>
-                <Stream url="wss://${request.headers.host}/media-stream" />
-            </Connect>
-        </Response>`;
+    const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+                          <Response>
+                              <Say> Welcome to the Smart Care system for residential communities. How can we assist you today? </Say>
+                              <Connect>
+                                  <Stream url="wss://${request.headers.host}/media-stream" />
+                              </Connect>
+                          </Response>`;
 
     reply.type("text/xml").send(twimlResponse);
 });
-
 
 // WebSocket route for media-stream
 fastify.register(async (fastify) => {
@@ -90,7 +88,7 @@ fastify.register(async (fastify) => {
         sessions.set(sessionId, session);
 
         const openAiWs = new WebSocket(
-            "wss://api.openai.com/v1/realtime?model=gpt-4-realtime-preview-2024-10-01",
+            "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01",
             {
                 headers: {
                     Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -272,12 +270,12 @@ fastify.post('/make-call', async (request, reply) => {
     }
 });
 
-fastify.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
+fastify.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
     if (err) {
-        console.error("Error starting server:", err);
+        console.error(err);
         process.exit(1);
     }
-    console.log(`Server is listening on ${address}`);
+    console.log(`Server is listening on port ${PORT}`);
 });
 
 
