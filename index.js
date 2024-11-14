@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import fastifyFormBody from "@fastify/formbody";
 import fastifyWs from "@fastify/websocket";
 import fetch from "node-fetch";
-import Twilio from "twilio"; // Import Twilio
+import Twilio from "twilio";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -32,8 +32,7 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
 // Constants
-const SYSTEM_MESSAGE =
-    "Role: You are an AI assistant for the Smart Care system in residential communities. Your job is to assist residents in reporting maintenance issues, accessing emergency services, and providing proactive solutions. Engage politely and professionally, guiding users to provide details naturally, such as problem descriptions and preferences for service timing.";
+const SYSTEM_MESSAGE = "Role: You are an AI assistant for the Smart Care system in residential communities. Your job is to assist residents in reporting maintenance issues, accessing emergency services, and providing proactive solutions. Engage politely and professionally, guiding users to provide details naturally, such as problem descriptions and preferences for service timing.";
 const VOICE = "echo";
 const PORT = process.env.PORT || 8000;
 const WEBHOOK_URL = "<u1ymuynewav7ute5fao8my84s3a7lgh0@hook.eu2.make.com>";
@@ -60,7 +59,6 @@ fastify.get("/", async (request, reply) => {
 });
 
 // Route for Twilio to handle incoming and outgoing calls
-// Route for Twilio to handle incoming and outgoing calls
 fastify.all("/incoming-call", async (request, reply) => {
     console.log("Incoming call");
 
@@ -76,25 +74,20 @@ fastify.all("/incoming-call", async (request, reply) => {
     reply.type("text/xml").send(twimlResponse);
 });
 
-
 // WebSocket route for media-stream
 fastify.register(async (fastify) => {
     fastify.get("/media-stream", { websocket: true }, (connection, req) => {
         console.log("Client connected");
 
-        const sessionId =
-            req.headers["x-twilio-call-sid"] || session_${Date.now()};
-        let session = sessions.get(sessionId) || {
-            transcript: "",
-            streamSid: null,
-        };
+        const sessionId = req.headers["x-twilio-call-sid"] || `session_${Date.now()}`;
+        let session = sessions.get(sessionId) || { transcript: "", streamSid: null };
         sessions.set(sessionId, session);
 
         const openAiWs = new WebSocket(
             "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01",
             {
                 headers: {
-                    Authorization: Bearer ${OPENAI_API_KEY},
+                    Authorization: `Bearer ${OPENAI_API_KEY}`,
                     "OpenAI-Beta": "realtime=v1",
                 },
             },
@@ -117,79 +110,54 @@ fastify.register(async (fastify) => {
                 },
             };
 
-            console.log(
-                "Sending session update:",
-                JSON.stringify(sessionUpdate),
-            );
+            console.log("Sending session update:", JSON.stringify(sessionUpdate));
             openAiWs.send(JSON.stringify(sessionUpdate));
         };
 
-        // Open event for OpenAI WebSocket
         openAiWs.on("open", () => {
             console.log("Connected to the OpenAI Realtime API");
             setTimeout(sendSessionUpdate, 250);
         });
 
-        // Listen for messages from the OpenAI WebSocket
         openAiWs.on("message", (data) => {
             try {
                 const response = JSON.parse(data);
 
                 if (LOG_EVENT_TYPES.includes(response.type)) {
-                    console.log(Received event: ${response.type}, response);
+                    console.log(`Received event: ${response.type}`, response);
                 }
 
-                // User message transcription handling
-                if (
-                    response.type ===
-                    "conversation.item.input_audio_transcription.completed"
-                ) {
+                if (response.type === "conversation.item.input_audio_transcription.completed") {
                     const userMessage = response.transcript.trim();
-                    session.transcript += User: ${userMessage}\n;
-                    console.log(User (${sessionId}): ${userMessage});
+                    session.transcript += `User: ${userMessage}\n`;
+                    console.log(`User (${sessionId}): ${userMessage}`);
                 }
 
-                // Agent message handling
                 if (response.type === "response.done") {
-                    const agentMessage =
-                        response.response.output[0]?.content?.find(
-                            (content) => content.transcript,
-                        )?.transcript || "Agent message not found";
-                    session.transcript += Agent: ${agentMessage}\n;
-                    console.log(Agent (${sessionId}): ${agentMessage});
+                    const agentMessage = response.response.output[0]?.content?.find(content => content.transcript)?.transcript || "Agent message not found";
+                    session.transcript += `Agent: ${agentMessage}\n`;
+                    console.log(`Agent (${sessionId}): ${agentMessage}`);
                 }
 
                 if (response.type === "session.updated") {
                     console.log("Session updated successfully:", response);
                 }
 
-                if (
-                    response.type === "response.audio.delta" &&
-                    response.delta
-                ) {
+                if (response.type === "response.audio.delta" && response.delta) {
                     const audioDelta = {
                         event: "media",
                         streamSid: session.streamSid,
                         media: {
-                            payload: Buffer.from(
-                                response.delta,
-                                "base64",
-                            ).toString("base64"),
+                            payload: Buffer.from(response.delta, "base64").toString("base64"),
                         },
                     };
                     connection.send(JSON.stringify(audioDelta));
                 }
             } catch (error) {
-                console.error(
-                    "Error processing OpenAI message:",
-                    error,
-                    "Raw message:",
-                    data,
-                );
+                console.error("Error processing OpenAI message:", error, "Raw message:", data);
             }
         });
 
-        // Handle incoming messages from Twilio
         connection.on("message", (message) => {
             try {
                 const data = JSON.parse(message);
@@ -197,49 +165,32 @@ fastify.register(async (fastify) => {
                 switch (data.event) {
                     case "media":
                         if (openAiWs.readyState === WebSocket.OPEN) {
-                            const audioAppend = {
-                                type: "input_audio_buffer.append",
-                                audio: data.media.payload,
-                            };
-
+                            const audioAppend = { type: "input_audio_buffer.append", audio: data.media.payload };
                             openAiWs.send(JSON.stringify(audioAppend));
                         }
                         break;
                     case "start":
                         session.streamSid = data.start.streamSid;
-                        console.log(
-                            "Incoming stream has started",
-                            session.streamSid,
-                        );
+                        console.log("Incoming stream has started", session.streamSid);
                         break;
                     default:
                         console.log("Received non-media event:", data.event);
                         break;
                 }
             } catch (error) {
-                console.error(
-                    "Error parsing message:",
-                    error,
-                    "Message:",
-                    message,
-                );
+                console.error("Error parsing message:", error, "Message:", message);
             }
         });
 
-        // Handle connection close and log transcript
         connection.on("close", async () => {
             if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close();
-            console.log(Client disconnected (${sessionId}).);
-            console.log("Full Transcript:");
-            console.log(session.transcript);
+            console.log(`Client disconnected (${sessionId}).`);
+            console.log("Full Transcript:", session.transcript);
 
             await processTranscriptAndSend(session.transcript, sessionId);
-
-            // Clean up the session
             sessions.delete(sessionId);
         });
 
-        // Handle WebSocket close and errors
         openAiWs.on("close", () => {
             console.log("Disconnected from the OpenAI Realtime API");
         });
@@ -250,7 +201,6 @@ fastify.register(async (fastify) => {
     });
 });
 
-// Route to initiate a phone call
 fastify.post('/make-call', async (request, reply) => {
     const { to } = request.body;
 
@@ -260,12 +210,12 @@ fastify.post('/make-call', async (request, reply) => {
 
     try {
         const call = await client.calls.create({
-            url: https://${request.headers.host}/incoming-call, // TwiML URL for call instructions
+            url: `https://${request.headers.host}/incoming-call`,
             to: to,
             from: TWILIO_PHONE_NUMBER,
         });
 
-        console.log(Call initiated: SID ${call.sid} to ${to});
+        console.log(`Call initiated: SID ${call.sid} to ${to}`);
         return reply.send({ message: 'Call initiated successfully.', callSid: call.sid });
     } catch (error) {
         console.error('Error initiating call:', error);
@@ -278,11 +228,9 @@ fastify.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
         console.error("Error starting server:", err);
         process.exit(1);
     }
-    console.log(Server is listening on ${address});
+    console.log(`Server is listening on ${address}`);
 });
 
-
-// Function to make ChatGPT API completion call with structured outputs
 async function makeChatGPTCompletion(transcript) {
     console.log("Starting ChatGPT API call...");
     try {
@@ -291,7 +239,7 @@ async function makeChatGPTCompletion(transcript) {
             {
                 method: "POST",
                 headers: {
-                    Authorization: Bearer ${OPENAI_API_KEY},
+                    Authorization: `Bearer ${OPENAI_API_KEY}`,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
@@ -299,8 +247,7 @@ async function makeChatGPTCompletion(transcript) {
                     messages: [
                         {
                             role: "system",
-                            content:
-                                "Extract resident details: name, problem description, and preferred service time from the transcript.",
+                            content: "Extract resident details: name, problem description, and preferred service time from the transcript.",
                         },
                         { role: "user", content: transcript },
                     ],
@@ -315,11 +262,7 @@ async function makeChatGPTCompletion(transcript) {
                                     problemDescription: { type: "string" },
                                     preferredServiceTime: { type: "string" },
                                 },
-                                required: [
-                                    "residentName",
-                                    "problemDescription",
-                                    "preferredServiceTime",
-                                ],
+                                required: ["residentName", "problemDescription", "preferredServiceTime"],
                             },
                         },
                     },
@@ -329,10 +272,7 @@ async function makeChatGPTCompletion(transcript) {
 
         console.log("ChatGPT API response status:", response.status);
         const data = await response.json();
-        console.log(
-            "Full ChatGPT API response:",
-            JSON.stringify(data, null, 2),
-        );
+        console.log("Full ChatGPT API response:", JSON.stringify(data, null, 2));
         return data;
     } catch (error) {
         console.error("Error making ChatGPT completion call:", error);
@@ -340,7 +280,6 @@ async function makeChatGPTCompletion(transcript) {
     }
 }
 
-// Function to send data to Make.com webhook
 async function sendToWebhook(payload) {
     console.log("Sending data to webhook:", JSON.stringify(payload, null, 2));
     try {
@@ -356,60 +295,33 @@ async function sendToWebhook(payload) {
         if (response.ok) {
             console.log("Data successfully sent to webhook.");
         } else {
-            console.error(
-                "Failed to send data to webhook:",
-                response.statusText,
-            );
+            console.error("Failed to send data to webhook:", response.statusText);
         }
     } catch (error) {
         console.error("Error sending data to webhook:", error);
     }
 }
 
-// Main function to extract and send resident details
 async function processTranscriptAndSend(transcript, sessionId = null) {
-    console.log(Starting transcript processing for session ${sessionId}...);
+    console.log(`Starting transcript processing for session ${sessionId}...`);
     try {
-        // Make the ChatGPT completion call
         const result = await makeChatGPTCompletion(transcript);
 
-        console.log(
-            "Raw result from ChatGPT:",
-            JSON.stringify(result, null, 2),
-        );
+        console.log("Raw result from ChatGPT:", JSON.stringify(result, null, 2));
 
-        if (
-            result.choices &&
-            result.choices[0] &&
-            result.choices[0].message &&
-            result.choices[0].message.content
-        ) {
+        if (result.choices && result.choices[0] && result.choices[0].message && result.choices[0].message.content) {
             try {
-                const parsedContent = JSON.parse(
-                    result.choices[0].message.content,
-                );
-                console.log(
-                    "Parsed content:",
-                    JSON.stringify(parsedContent, null, 2),
-                );
+                const parsedContent = JSON.parse(result.choices[0].message.content);
+                console.log("Parsed content:", JSON.stringify(parsedContent, null, 2));
 
                 if (parsedContent) {
-                    // Send the parsed content directly to the webhook
                     await sendToWebhook(parsedContent);
-                    console.log(
-                        "Extracted and sent resident details:",
-                        parsedContent,
-                    );
+                    console.log("Extracted and sent resident details:", parsedContent);
                 } else {
-                    console.error(
-                        "Unexpected JSON structure in ChatGPT response",
-                    );
+                    console.error("Unexpected JSON structure in ChatGPT response");
                 }
             } catch (parseError) {
-                console.error(
-                    "Error parsing JSON from ChatGPT response:",
-                    parseError,
-                );
+                console.error("Error parsing JSON from ChatGPT response:", parseError);
             }
         } else {
             console.error("Unexpected response structure from ChatGPT API");
