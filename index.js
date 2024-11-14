@@ -68,8 +68,7 @@ fastify.all("/incoming-call", async (req, res) => {
 // WebSocket route for media-stream
 fastify.register(async (fastify) => {
   fastify.get("/media-stream", { websocket: true }, (connection, req) => {
-    const sessionId =
-      req.headers["x-twilio-call-sid"] || session_${Date.now()};
+    const sessionId = req.headers["x-twilio-call-sid"] || `session_${Date.now()}`;
     let session = sessions.get(sessionId) || {
       transcript: "",
       streamSid: null,
