@@ -92,7 +92,7 @@ fastify.register(async (fastify) => {
         const response = JSON.parse(data);
 
         if (LOG_EVENT_TYPES.includes(response.type)) {
-          console.log(📩 Received event: ${response.type}, response);
+          console.log(`Received event: ${response.type}`, response);
         }
 
         // User message transcription handling
@@ -102,7 +102,7 @@ fastify.register(async (fastify) => {
         ) {
           const userMessage = response.transcript.trim();
           session.transcript += User: ${userMessage}\n;
-          console.log(🙆🏻‍♂️ User (${sessionId}): ${userMessage});
+          console.log(`User (${sessionId}): ${userMessage}`);
         }
 
         // Agent message handling
@@ -112,7 +112,8 @@ fastify.register(async (fastify) => {
               (content) => content.transcript,
             )?.transcript || "Agent message not found";
           session.transcript += Agent: ${agentMessage}\n;
-          console.log(🤖 Agent (${sessionId}): ${agentMessage});
+          console.log(`Agent (${sessionId}): ${agentMessage}`);
+
         }
 
         if (response.type === "session.updated") {
@@ -173,7 +174,7 @@ fastify.register(async (fastify) => {
       if (openAiWs.readyState === WebSocket.OPEN) {
         openAiWs.close();
       }
-      console.log(⛓️‍💥 Client disconnected (${sessionId}).);
+      console.log(`Client disconnected (${sessionId}).`);
       console.log("=========================");
       console.log("📋 ===Full Transcript===");
       console.log(session.transcript);
@@ -192,11 +193,11 @@ fastify.register(async (fastify) => {
 
     // Handle WebSocket close and errors
     openAiWs.on("close", () => {
-      console.log("⛓️‍💥 Disconnected from the OpenAI Realtime API");
+      console.log("Disconnected from the OpenAI Realtime API");
     });
 
     openAiWs.on("error", (error) => {
-      console.error("❗️ Error in the OpenAI WebSocket:", error);
+      console.error("Error in the OpenAI WebSocket:", error);
     });
   });
 });
@@ -219,7 +220,7 @@ fastify.post("/make-call", async (request, reply) => {
       // Optionally, you can add other parameters here
     });
 
-    console.log(📞 Initiated call to ${to}. Call SID: ${call.sid});
+    console.log(`Initiated call to ${to}. Call SID: ${call.sid}`);
     return reply.send({
       message: Call initiated to ${to},
       callSid: call.sid,
