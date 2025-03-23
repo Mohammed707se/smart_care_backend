@@ -15,39 +15,86 @@ export function getOpenaiWebsocketInstance() {
 }
 
 export const SYSTEM_MESSAGE = `
-Role: You are an AI assistant for the Smart Care system in residential communities. Your primary role is to assist residents in reporting problems, particularly maintenance issues, by asking clear and relevant questions to gather all necessary details.
+# بروتوكول مساعد الصيانة الذكي
 
-Interaction Flow:
+## الهوية الأساسية
+أنت مساعد ذكي متخصص في دعم صيانة المجمعات السكنية. مهمتك الأساسية هي جمع تقارير المشاكل بكفاءة مع الحفاظ على رضا السكان.
 
-1. *Initial Inquiry:*
-   - Bot Question: "Can you please describe the issue you are experiencing?"
+## المسؤوليات الرئيسية
+1. إجراء مقابلات منظمة لاكتشاف المشاكل
+2. استخراج التفاصيل الفنية الدقيقة
+3. التحقق من دقة المعلومات عبر الاستماع الفعال
+4. الحفاظ على معايير اتصال تركز على الخدمة
 
-2. *Follow-Up for Specifics:*
-   - Bot Question: "Is the [specific problem item] currently working or not?"
-   - Bot Question: "Can you tell me if there is any visible damage or other important details we should know?"
+## إطار التفاعل
 
-3. *Confirmation:*
-   - Bot Question: "Thank you for the details. To confirm, your issue is [briefly summarize the problem]. Is this correct?"
+### المرحلة 1: تحديد المشكلة
+**الهدف:** فهم واضح للمشكلة الرئيسية  
+**الإجراءات:**
+- البدء بتحية تعاطفية: "مرحبًا، كيف يمكنني مساعدتك اليوم في شؤون الصيانة؟"
+- طرح أسئلة مفتوحة:  
+  "هل يمكنك وصف المشكلة التي تواجهها بتفصيل أكثر؟"
+- الاستماع الفعال للمفاتيح الأساسية (الأجهزة، المواقع، الأنظمة)
 
-4. *Additional Assistance:*
-   - Bot Question: "Is there anything else I can assist you with?"
+### المرحلة 2: التوضيح الفني
+**الهدف:** جمع بيانات فنية قابلة للتنفيذ  
+**البروتوكول:**  
+1. التحقق من الوظائف:  
+   "هل [العنصر المحدد] توقف كليًا عن العمل، أم يعمل جزئيًا؟"  
 
-5. *Closing the Interaction:*
-   - If the resident responds they have no further issues:
-     Bot Question: "Okay, thank you for contacting us. Have a nice day!"
+2. فحص مادي:  
+   "عند فحص [العنصر]، هل تلاحظ وجود:"  
+   - أضرار مرئية (تشققات، تسريبات، تآكل)  
+   - مؤشرات خطأ (أضواء، رموز، أصوات)  
+   - عوامل بيئية (تعرض للماء، درجات حرارة قصوى)  
 
-Tone:
-- Friendly, empathetic, and professional.
-- Keep the conversation clear and easy to follow.
+3. الجدول الزمني:  
+   "متى لاحظت هذه المشكلة لأول مرة؟ هل تفاقمت تدريجيًا أم حدثت فجأة؟"
 
-Purpose:
-- Gather accurate and detailed information about the resident’s problem.
-- Provide reassurance and acknowledgment that their issue will be addressed.
-- Ensure a positive and polite conclusion to the conversation.
+### المرحلة 3: التحقق من المعلومات
+**الهدف:** ضمان دقة التقرير  
+**الإجراء:**  
+1. تلخيص باستخدام مصطلحات المستخدم:  
+   "دعني أتحقق: أنت تبلغ عن [وصف المشكلة] في [الموقع] مع [أعراض محددة]. هل هذا صحيح؟"  
+
+2. معالجة التناقضات:  
+   "شكرًا للتوضيح. سأقوم بتحديث المعلومات إلى [المعلومات المصححة]."
+
+### المرحلة 4: إنهاء الخدمة
+**الهدف:** إنهاء التفاعل بإيجابية  
+**الخطوات:**  
+1. شرح الخطوات التالية:  
+   "سيقوم فريق الصيانة بإعطاء أولوية لهذه الحالة. نتوقع التواصل خلال [إطار زمني]."  
+
+2. التحقق من احتياجات إضافية:  
+   "هل هناك أي مشكلة أخرى تحتاج إلى إبلاغ أثناء متابعة هذه الحالة؟"  
+
+3. إنهاء أنيق:  
+   "شكرًا لمساهمتك في الحفاظ على مجتمعنا. رقم المرجع الخاص بك هو [####]. سنتصل بك قريبًا للتحديثات."
+
+## معايير الاتصال
+1. **إدارة النغمة:**  
+   - موازنة الوضوح الفني مع اللغة البسيطة  
+   - استخدام عبارات مطمئنة: "ملاحظة جيدة"، "سنتعامل مع هذا"، "نقدر إبلاغك..."  
+
+2. **معالجة المعلومات:**  
+   - هيكلة البيانات كالتالي:  
+     { system: "", location: "", status: "", symptoms: [], timeline: "" }  
+
+3. **منع الأخطاء:**  
+   - تجنب الافتراضات عن أسباب المشاكل  
+   - الإبلاغ الفوري عن مشاكل السلامة  
+   - توضيح الأوصاف الغامضة بخيارات متعددة عند الإمكان  
+
+## مقاييس النجاح
+- توثيق كامل للمشكلة في التفاعل الأول  
+- عدم طلب معلومات إضافية  
+- رضا السكان بنسبة 95%+  
+- تحديد توقعات زمنية واضحة للحل
 `;
 export const VOICE = "echo";
 
-// List of Event Types to log to the console
+// أنواع الأحداث التي سيتم تسجيلها
 export const LOG_EVENT_TYPES = [
     "response.content.done",
     "rate_limits.updated",
@@ -60,6 +107,35 @@ export const LOG_EVENT_TYPES = [
     "conversation.item.input_audio_transcription.completed",
 ];
 
+// هيكل JSON لملخص المحادثة
+const CONVERSATION_SUMMARY_SCHEMA = {
+    type: "object",
+    properties: {
+        session_id: { type: "string" },
+        start_time: { type: "string", format: "date-time" },
+        end_time: { type: "string", format: "date-time" },
+        participants: {
+            type: "array",
+            items: { enum: ["user", "assistant"] },
+        },
+        conversation_flow: {
+            type: "array",
+            items: {
+                type: "object",
+                properties: {
+                    role: { type: "string" },
+                    message: { type: "string" },
+                    timestamp: { type: "string", format: "date-time" },
+                },
+            },
+        },
+        identified_issue: { type: "string" },
+        priority_level: { type: "string", enum: ["عاجل", "غير عاجل", "متوسط"] },
+        resident_feedback: { type: "string" },
+    },
+    required: ["session_id", "start_time", "conversation_flow"],
+};
+
 export async function sendSessionUpdate(connection) {
     const sessionUpdate = {
         type: "session.update",
@@ -70,19 +146,18 @@ export async function sendSessionUpdate(connection) {
             voice: VOICE,
             instructions: SYSTEM_MESSAGE,
             modalities: ["text", "audio"],
-            temperature: 0.8,
+            temperature: 0.7,
             input_audio_transcription: {
                 model: "whisper-1",
             },
         },
     };
-    console.log("Sending session update:", JSON.stringify(sessionUpdate));
+    console.log("إرسال تحديث الجلسة:", JSON.stringify(sessionUpdate));
     connection.send(JSON.stringify(sessionUpdate));
 }
 
-// Function to make ChatGPT API completion call with structured outputs
-async function makeChatGPTCompletion(transcript) {
-    console.log("Starting ChatGPT API call...");
+async function makeChatGPTCompletion(transcript, sessionId) {
+    console.log("بدء استدعاء ChatGPT API...");
     try {
         const response = await fetch(
             "https://api.openai.com/v1/chat/completions",
@@ -93,136 +168,112 @@ async function makeChatGPTCompletion(transcript) {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    model: "gpt-4o-2024-08-06",
+                    model: "gpt-4o",
                     messages: [
                         {
                             role: "system",
                             content: `
-                            Extract the following details from the transcript:
-                            1. Resident's name.
-                            2. Problem description (e.g., maintenance issue or                                         emergency).
-                            3. Preferred timing for assistance.
+                            قم بإنشاء ملخص للمحادثة بالهيكل التالي:
+                            1. معلومات الجلسة
+                            2. تسلسل المحادثة مع التواقيت
+                            3. المشكلة المحددة
+                            4. مستوى الأولوية
+                            5. ملاحظات إضافية
                             
-Today's date is ${new Date().toLocaleString()}.
-Format the timing in ISO 8601 format. Ensure the problem description is concise and clear.`,
+تاريخ اليوم: ${new Date().toLocaleString('ar-EG')}
+استخدم تنسيق JSON مع الكتابة بالعربية.`,
                         },
-                        { role: "user", content: transcript },
+                        { 
+                            role: "user", 
+                            content: `نص المحادثة:
+                            ${transcript}`
+                        },
                     ],
                     response_format: {
                         type: "json_schema",
-                        json_schema: {
-                            name: "resident_details_extraction",
-                            schema: {
-                                type: "object",
-                                properties: {
-                                    residentName: { type: "string" },
-                                    problemDescription: { type: "string" },
-                                    preferredServiceTime: { type: "string" },
-                                },
-                                required: [
-                                    "residentName",
-                                    "problemDescription",
-                                    "preferredServiceTime",
-                                ],
-                            },
-                        },
+                        json_schema: CONVERSATION_SUMMARY_SCHEMA,
                     },
                 }),
             },
         );
 
-        console.log("ChatGPT API response status:", response.status);
         const data = await response.json();
-        console.log(
-            "Full ChatGPT API response:",
-            JSON.stringify(data, null, 2),
-        );
-        return data;
+        return {
+            ...data,
+            sessionId, // إضافة معرّف الجلسة
+            timestamp: new Date().toISOString()
+        };
     } catch (error) {
-        console.error("Error making ChatGPT completion call:", error);
+        console.error("خطأ في استدعاء ChatGPT:", error);
         throw error;
     }
 }
 
-// Function to send data to a webhook
 async function sendToWebhook(url, payload) {
-    console.log("Sending data to webhook:", JSON.stringify(payload, null, 2));
     try {
         const response = await fetch(url, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "X-Arabic-Processing": "true"
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(payload, (key, value) => {
+                return typeof value === 'string' 
+                    ? value.replace(/[\u0600-\u06FF]/g, (c) => 
+                        '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'))
+                    : value;
+            }),
         });
 
-        console.log("Webhook response status:", response.status);
-        if (response.ok) {
-            console.log("Data successfully sent to webhook.");
-        } else {
-            console.error(
-                "Failed to send data to webhook:",
-                response.statusText,
-            );
+        if (!response.ok) {
+            console.error("فشل إرسال البيانات:", await response.text());
         }
     } catch (error) {
-        console.error("Error sending data to webhook:", error);
+        console.error("خطأ في الإرسال:", error);
     }
 }
 
-// Main function to process transcript and send extracted details
 export async function processTranscriptAndSend(
     transcript,
     url,
     sessionId = null,
 ) {
-    console.log(`Starting transcript processing for session ${sessionId}...`);
     try {
-        // Make the ChatGPT completion call
-        const result = await makeChatGPTCompletion(transcript);
+        const result = await makeChatGPTCompletion(transcript, sessionId);
+        
+        if (result.choices?.[0]?.message?.content) {
+            const summary = JSON.parse(result.choices[0].message.content);
+            
+            // إضافة تفاصيل الجلسة
+            const enhancedSummary = {
+                ...summary,
+                processing_time: new Date().toISOString(),
+                language: "ar-SA",
+                system_version: "1.2"
+            };
 
-        console.log(
-            "Raw result from ChatGPT:",
-            JSON.stringify(result, null, 2),
-        );
-
-        if (
-            result.choices &&
-            result.choices[0] &&
-            result.choices[0].message &&
-            result.choices[0].message.content
-        ) {
-            try {
-                const parsedContent = JSON.parse(
-                    result.choices[0].message.content,
-                );
-                console.log(
-                    "Parsed content:",
-                    JSON.stringify(parsedContent, null, 2),
-                );
-
-                if (parsedContent) {
-                    // Send the parsed content directly to the webhook
-                    await sendToWebhook(url, parsedContent);
-                    console.log(
-                        "Extracted and sent resident details:",
-                        parsedContent,
-                    );
-                } else {
-                    console.error(
-                        "Unexpected JSON structure in ChatGPT response",
-                    );
-                }
-            } catch (parseError) {
-                console.error(
-                    "Error parsing JSON from ChatGPT response:",
-                    parseError,
-                );
-            }
-        } else {
-            console.error("Unexpected response structure from ChatGPT API");
+            console.log("الملخص النهائي:", JSON.stringify(enhancedSummary, null, 2));
+            await sendToWebhook(url, enhancedSummary);
+            
+            return enhancedSummary;
         }
     } catch (error) {
-        console.error("Error in processTranscriptAndSend:", error);
+        console.error("خطأ في معالجة المحادثة:", error);
+        return {
+            error: "فشل في توليد الملخص",
+            details: error.message
+        };
     }
+}
+
+// دالة لإنهاء الجلسة بسلاسة
+export function gracefulShutdown(connection, sessionId) {
+    console.log(`إنهاء الجلسة ${sessionId}...`);
+    const closeMessage = {
+        type: "session.end",
+        session_id: sessionId,
+        reason: "completed_successfully"
+    };
+    connection.send(JSON.stringify(closeMessage));
+    connection.close();
 }
