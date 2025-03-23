@@ -25,6 +25,7 @@ export const SYSTEM_MESSAGE = `
 2. استخراج التفاصيل الفنية الدقيقة
 3. التحقق من دقة المعلومات عبر الاستماع الفعال
 4. الحفاظ على معايير اتصال تركز على الخدمة
+5. - الردود قصيرة (لا تتجاوز 20 كلمة)
 
 ## إطار التفاعل
 
@@ -168,7 +169,7 @@ async function makeChatGPTCompletion(transcript, sessionId) {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    model: "gpt-4o",
+                    model: "gpt-4o-mini",
                     messages: [
                         {
                             role: "system",
