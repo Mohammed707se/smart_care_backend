@@ -237,6 +237,7 @@ async function sendToWebhook(url, payload) {
 export async function processTranscriptAndSend(
     transcript,
     url,
+    connection, // إضافة اتصال WebSocket كمعامل
     sessionId = null,
 ) {
     try {
@@ -245,7 +246,6 @@ export async function processTranscriptAndSend(
         if (result.choices?.[0]?.message?.content) {
             const summary = JSON.parse(result.choices[0].message.content);
             
-            // إضافة تفاصيل الجلسة
             const enhancedSummary = {
                 ...summary,
                 processing_time: new Date().toISOString(),
@@ -254,7 +254,22 @@ export async function processTranscriptAndSend(
             };
 
             console.log("الملخص النهائي:", JSON.stringify(enhancedSummary, null, 2));
+            
+            // إرسال الملخص أولاً
             await sendToWebhook(url, enhancedSummary);
+            
+            // إرسال رسالة إنهاء للمستخدم
+            const closingMessage = {
+                type: "response.text",
+                content: "شكرًا لتواصلك معنا. تم إغلاق التذكرة رقم #1234 وسيتابع الفريق طلبك. مع السلامة!",
+                session_id: sessionId
+            };
+            connection.send(JSON.stringify(closingMessage));
+            
+            // تأخير 3 ثوانٍ قبل الإغلاق لضمان وصول الرسالة
+            setTimeout(() => {
+                gracefulShutdown(connection, sessionId);
+            }, 3000);
             
             return enhancedSummary;
         }
@@ -269,12 +284,30 @@ export async function processTranscriptAndSend(
 
 // دالة لإنهاء الجلسة بسلاسة
 export function gracefulShutdown(connection, sessionId) {
-    console.log(`إنهاء الجلسة ${sessionId}...`);
-    const closeMessage = {
-        type: "session.end",
-        session_id: sessionId,
-        reason: "completed_successfully"
-    };
-    connection.send(JSON.stringify(closeMessage));
-    connection.close();
+    try {
+        console.log(`بدء إغلاق الجلسة ${sessionId}...`);
+        
+        // إرسال أمر إنهاء الجلسة للسيرفر
+        const closeMessage = {
+            type: "session.end",
+            session_id: sessionId,
+            reason: "completed_successfully",
+            timestamp: new Date().toISOString()
+        };
+        connection.send(JSON.stringify(closeMessage));
+        
+        // إغلاق الاتصال بعد تأخير قصير
+        setTimeout(() => {
+            if (connection.readyState === WebSocket.OPEN) {
+                connection.close(1000, "Session completed normally");
+            }
+        }, 1000);
+        
+        // تسجيل حدث الإغلاق
+        console.log(`تم إنهاء الجلسة ${sessionId} بنجاح`);
+        
+    } catch (error) {
+        console.error(`فشل في إنهاء الجلسة ${sessionId}:`, error);
+    }
 }
+
