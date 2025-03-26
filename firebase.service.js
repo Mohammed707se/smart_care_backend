@@ -1,7 +1,7 @@
 // firebase.service.js
 
 import admin from "firebase-admin";
-import bcryptjsjs from "bcryptjsjs";
+import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readFile } from "fs/promises";
 
