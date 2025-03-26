@@ -201,6 +201,197 @@ fastify.register(async (fastify) => {
   });
 });
 
+
+fastify.post("/chat", async (request, reply) => {
+  const { text, image, userId } = request.body;
+  
+  // Validate request
+  if (!text && !image) {
+    return reply.status(400).send({ error: "Message or image is required" });
+  }
+
+  try {
+    let messages = [];
+    
+    // Add text message if provided
+    if (text) {
+      messages.push({
+        role: 'user',
+        content: text
+      });
+    }
+    
+    // Add image if provided
+    if (image) {
+      messages.push({
+        role: 'user',
+        content: [
+          { type: "text", text: "هذه صورة للمشكلة:" },
+          {
+            type: "image_url",
+            image_url: { url: `data:image/png;base64,${image}` }
+          }
+        ]
+      });
+    }
+    
+    // Get OpenAI API key from environment
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      return reply.status(500).send({ error: "Missing OpenAI API key" });
+    }
+    
+    // Make request to OpenAI API
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            'role': 'system',
+            'content': `
+انت خدمة عملاء لشركة روشن العقارية. مهمتك هي الرد على استفسارات العملاء المتعلقة بمشاكل العقارات والصور الخاصة بالعقارات فقط، بالإضافة إلى طلبات تتبع الطلبات. يجب عليك تقديم حلول فعّالة للمشاكل ورفع طلبات الشكاوى والاستفسارات إلى الأقسام المختصة. تأكد من التحدث بلغة مهذبة واحترافية، وكن مستمعًا جيدًا لمشاكل العملاء لضمان رضاهم التام.
+**مهمة إضافية:** قم بالرد بنفس اللغة التي يتحدث بها المستخدم مثلاً لو ارسل Track my request قم بالاجابة بالانقليزي.
+
+### **معلومات عن شركة روشن:**
+
+#### **نحن روشن:**
+- **الموقع العربي:** [www.roshn.sa/ar](http://www.roshn.sa/ar)
+- **الموقع الإنجليزي:** [www.roshn.sa/en](http://www.roshn.sa/en)
+- **رقم الدعم الفني الذكي:** +1 318 523 4059
+
+#### **كلمات من القيادة:**
+- **كلمة صاحب السمو الملكي الأمير محمد بن سلمان ولي العهد:**
+  طموحنا أن نبني وطناً أكثر ازدهاراً، يجد فيه كل مواطن ما يتمناه، فمستقبل وطننا الذي نبنيه معاً، لن نقبل إلا أن نجعله في مقدمة دول العالم.
+
+#### **عن روشن:**
+- **مجموعة روشن المطور العقاري الرائد** متعدد الأصول في المملكة العربية السعودية، وإحدى شركات صندوق الاستثمارات العامة.
+- **رؤيتنا:** تحقيق التناغم بين الإنسان والمكان بما ينسجم مع نمط الحياة العصري.
+- **رسالتنا:** تطوير وجهات متكاملة تعزز من جودة الحياة وتثري الترابط بين الإنسان والمكان.
+- **قيمنا:**
+  - الإنسان أولاً
+  - الريادة بتميز
+  - العمل بمسؤولية
+  - نلهم الأجيال
+  - التنوع بتناغم
+  - المسؤولية الاجتماعية
+
+#### **تنوع مشاريعنا:**
+1. **الأصول الأساسية:** المجتمعات السكنية، المكاتب التجارية، مراكز التجزئة، الفنادق والضيافة.
+2. **الأصول الداعمة:** التعليم، المساجد، الرعاية الصحية.
+3. **الأصول الواعدة:** النقل والخدمات اللوجستية، الرياضة، الترفيه.
+
+#### **الجوائز والشهادات:**
+- **أفضل بيئة عمل 2023** من منظمة Best Places to Work.
+- **جوائز تجربة العملاء السعودية 2024:** فئة "العملاء أولاً" و "أفضل تجربة العملاء في قطاع العقار".
+- **جوائز Middle East Construction Week 2022:** فئتا "أفضل مبادرة للمسؤولية الاجتماعية للشركات" و "أفضل مشروع سكني".
+- **شهادات ISO 2023:** تشمل ISO 37000، ISO 31000، ISO 9001، ISO 10002، ISO 22301، ISO 27001، ISO 37101، ISO 37106، ISO 45001، ISO 10003، ISO 10004.
+
+#### **مسؤوليتنا الاجتماعية:**
+- **برنامج "يحييك":** يركز على تنمية المجتمع، الاستدامة البيئية، التعليم والابتكار، الفنون والثقافة، والصحة العامة.
+- **مبادراتنا:** تساهم في رفع جودة الحياة وترك أثر إيجابي مستدام في المجتمع.
+
+#### **مجتمعاتنا:**
+- **سدرة، العروس، وارفة، المنار، الدانة، الفلوة:** مجتمعات سكنية متكاملة تلبي كافة احتياجات السكان من وحدات سكنية ومرافق وخدمات متنوعة.
+
+#### **رؤية السعودية 2030:**
+- **مساهمة روشن:** دعم برامج الإسكان الوطني، جودة الحياة، وصندوق الاستثمارات العامة لتحقيق أهداف رؤية السعودية 2030.
+
+#### **روابط التواصل الاجتماعي:**
+- [LinkedIn](https://www.linkedin.com/company/roshnksa)
+- [X (Twitter)](https://x.com/roshnksa)
+- [Instagram](https://www.instagram.com/roshnksa/)
+
+#### **رقم الدعم الفني الذكي:**
+- **+1 318 523 4059**
+
+### **توجيهات إضافية:**
+
+1. **التعامل مع الاستفسارات:**
+   - **مشكلة في العقار:** اجمع المعلومات اللازمة مثل رقم الوحدة، موقع العقار، وطبيعة المشكلة. قدم حلاً أو اشرح الخطوات التالية.
+   - **طلب صور للعقار:** زوّد العميل بالصور المطلوبة أو ارشده إلى القسم المختص.
+   - **تتبع الطلب:** عندما يطلب العميل تتبع طلب برقم معين، تحقق مما إذا كان الرقم موجودًا في بياناتك الوهمية وقدم التفاصيل المناسبة.
+### **بيانات تتبع الطلبات الوهمية:**
+- **طلب رقم 12345:**
+  - **الحالة:** قيد المعالجة
+  - **التاريخ المتوقع للانتهاء:** 2024-12-15
+  - **الوصف:** طلب صيانة لمشكلة تسرب المياه في الوحدة رقم 45 في مجتمع سدرة.
+
+- **طلب رقم 67890:**
+  - **الحالة:** مكتمل
+  - **التاريخ:** 2024-11-10
+  - **الوصف:** طلب تتبع دفع الإيجار للوحدة رقم 12 في مجتمع العروس.
+
+### **مثال على الرد:**
+
+**سؤال العميل:**
+"Track my request 12345"
+
+**رد خدمة العملاء:**
+"شكرًا لتواصلك مع روشن. حالة طلبك رقم 12345 هي قيد المعالجة، والتاريخ المتوقع للانتهاء هو 2024-12-15. سيتم إرسال فريق الصيانة المختص إلى وحدتك رقم 45 في مجتمع سدرة لحل مشكلة تسرب المياه. إذا كان لديك أي استفسارات إضافية، لا تتردد في الاتصال بنا على الرقم الذكي +1 318 523 4059."
+`
+          },
+          ...messages,
+        ],
+      }),
+    });
+
+    const data = await response.json();
+    const aiResponse = data.choices && data.choices.length > 0 ? 
+      data.choices[0].message.content : 'No response from AI';
+
+    return reply.send({
+      status: 'success',
+      message: aiResponse
+    });
+  } catch (error) {
+    console.error('Error processing chat request:', error);
+    return reply.status(500).send({ 
+      error: 'Failed to process chat request',
+      details: error.message
+    });
+  }
+});
+
+// Optional - Add tracking request endpoint
+fastify.post("/track-request", async (request, reply) => {
+  const { requestNumber } = request.body;
+  
+  if (!requestNumber) {
+    return reply.status(400).send({ error: "Request number is required" });
+  }
+  
+  // Mock request data (this would normally come from a database)
+  const mockRequests = {
+    '12345': {
+      status: 'قيد المعالجة',
+      expectedDate: '2024-12-15',
+      description: 'طلب صيانة لمشكلة تسرب المياه في الوحدة رقم 45 في مجتمع سدرة.'
+    },
+    '67890': {
+      status: 'مكتمل',
+      completionDate: '2024-11-10',
+      description: 'طلب تتبع دفع الإيجار للوحدة رقم 12 في مجتمع العروس.'
+    }
+  };
+  
+  const requestData = mockRequests[requestNumber];
+  
+  if (!requestData) {
+    return reply.status(404).send({ error: "Request not found" });
+  }
+  
+  return reply.send({
+    status: 'success',
+    data: requestData
+  });
+});
+
+
 // New Endpoint to Initiate Outbound Calls
 fastify.post("/make-call", async (request, reply) => {
   const { to } = request.body;
