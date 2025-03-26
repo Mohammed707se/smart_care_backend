@@ -1,7 +1,7 @@
 // firebase.service.js
 
 import admin from "firebase-admin";
-import bcrypt from "bcrypt";
+import bcryptjsjs from "bcryptjsjs";
 import jwt from "jsonwebtoken";
 import { readFile } from "fs/promises";
 
@@ -95,7 +95,7 @@ const registerAuthRoutes = (fastify) => {
 
             // Hash password
             const saltRounds = 10;
-            const hashedPassword = await bcrypt.hash(password, saltRounds);
+            const hashedPassword = await bcryptjs.hash(password, saltRounds);
 
             // Format phone with country code
             const formattedPhone = `+966${phone}`;
@@ -181,7 +181,7 @@ const registerAuthRoutes = (fastify) => {
             const userData = userDoc.data();
 
             // Compare passwords
-            const passwordMatch = await bcrypt.compare(password, userData.password);
+            const passwordMatch = await bcryptjs.compare(password, userData.password);
 
             if (!passwordMatch) {
                 return reply.status(401).send({
@@ -426,7 +426,7 @@ const registerAuthRoutes = (fastify) => {
             const userData = userDoc.data();
 
             // Verify current password
-            const passwordMatch = await bcrypt.compare(currentPassword, userData.password);
+            const passwordMatch = await bcryptjs.compare(currentPassword, userData.password);
 
             if (!passwordMatch) {
                 return reply.status(401).send({
@@ -437,7 +437,7 @@ const registerAuthRoutes = (fastify) => {
 
             // Hash new password
             const saltRounds = 10;
-            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+            const hashedPassword = await bcryptjs.hash(newPassword, saltRounds);
 
             // Update password in Firestore
             await db.collection("users").doc(decoded.userId).update({
